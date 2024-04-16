@@ -95,7 +95,7 @@ object Main extends App with Job {
   val processedDF = processor.process(inputDF)
 
   val tableName = "my_table"
-  val tableLocation = "./src/main/ressources"
+  val tableLocation = "./src/main/resources"
   processedDF.write
     .mode(SaveMode.Overwrite)
     .option("path", tableLocation)
