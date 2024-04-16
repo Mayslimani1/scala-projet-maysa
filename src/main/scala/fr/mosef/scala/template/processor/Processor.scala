@@ -6,4 +6,8 @@ trait Processor {
 
   def process(inputDF: DataFrame) : DataFrame
 
+  def countRowsInDataFrame(dataFrame: DataFrame): DataFrame
+
+  def sumColumn(dataFrame: DataFrame, columnName: String): DataFrame
+
 }

@@ -4,12 +4,14 @@ import fr.mosef.scala.template.job.Job
 import fr.mosef.scala.template.processor.Processor
 import fr.mosef.scala.template.processor.impl.ProcessorImpl
 import fr.mosef.scala.template.reader.Reader
+import fr.mosef.scala.template.reader.Reader
 import fr.mosef.scala.template.reader.impl.ReaderImpl
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import fr.mosef.scala.template.writer.Writer
 import org.apache.spark.SparkConf
 import com.globalmentor.apache.hadoop.fs.BareLocalFileSystem
 import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.sql.SaveMode
 
 object Main extends App with Job {
 
@@ -23,17 +25,36 @@ object Main extends App with Job {
     cliArgs(1)
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => {
-      print("No input defined")
-      sys.exit(1)
+      "./src/main/resources/commandes.csv"
     }
   }
+
+  val SRC_PATH_PARQUET: String = try {
+    cliArgs(1)
+  } catch {
+    case e: java.lang.ArrayIndexOutOfBoundsException => {
+      "./src/main/resources/commandes.parquet"
+    }
+  }
+
+
   val DST_PATH: String = try {
     cliArgs(2)
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => {
-      "./default/output-writer"
+      "./default/output-writer-csv"
     }
   }
+
+
+  val DST_PATH_PARQUET: String = try {
+    cliArgs(2)
+  } catch {
+    case e: java.lang.ArrayIndexOutOfBoundsException => {
+      "./default/output-writer-parquet"
+    }
+  }
+
 
   val conf = new SparkConf()
   conf.set("spark.driver.memory", "64M")
@@ -55,11 +76,25 @@ object Main extends App with Job {
   val reader: Reader = new ReaderImpl(sparkSession)
   val processor: Processor = new ProcessorImpl()
   val writer: Writer = new Writer()
+
   val src_path = SRC_PATH
+  val src_path_parquet = SRC_PATH_PARQUET
+
   val dst_path = DST_PATH
+  val dst_path_parquet = DST_PATH_PARQUET
+
+
 
   val inputDF: DataFrame = reader.read(src_path)
+
+
+  val inputDFparquet : DataFrame = reader.readParquet(src_path_parquet)
+  inputDFparquet.show(50)
+
+
   val processedDF: DataFrame = processor.process(inputDF)
   writer.write(processedDF, "overwrite", dst_path)
+
+  val processedDF_parquet = processor.countRowsInDataFrame(inputDFparquet)
 
 }

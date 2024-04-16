@@ -22,7 +22,19 @@ class ReaderImpl(sparkSession: SparkSession) extends Reader {
       .format("csv")
       .load(path)
   }
-
+  def readParquet(path: String): DataFrame = {
+    sparkSession
+      .read
+      .format("parquet")
+      .load(path)
+  }
+  def readTable(tableName: String, location: String): DataFrame = {
+    sparkSession
+      .read
+      .format("parquet")
+      .option("basePath", location)
+      .load(location + "/" + tableName)
+  }
   def read(): DataFrame = {
     sparkSession.sql("SELECT 'Empty DataFrame for unit testing implementation")
   }
