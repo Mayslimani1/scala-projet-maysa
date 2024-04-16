@@ -10,19 +10,12 @@ class ProcessorImpl() extends Processor {
     //inputDF.groupBy("group_key").sum("field1")
     inputDF.groupBy("num_client").sum("montant_total_paye")
   }
-  def countRowsInDataFrame(dataFrame: DataFrame): DataFrame = {
+  def countRows(dataFrame: DataFrame): DataFrame = {
     val rowCount = dataFrame.count()
     val spark = dataFrame.sparkSession
     import spark.implicits._
     val countDF = Seq(rowCount).toDF("rowCount")
     countDF
   }
-
-  def sumColumn(dataFrame: DataFrame, columnName: String): DataFrame = {
-    val sumResult = dataFrame.agg(functions.sum(columnName)).toDF("sumResult")
-    sumResult
-  }
-
-
 
 }

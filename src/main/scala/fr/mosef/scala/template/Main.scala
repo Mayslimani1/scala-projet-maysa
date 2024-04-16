@@ -1,5 +1,5 @@
 package fr.mosef.scala.template
-
+import org.apache.spark.sql.SaveMode
 import fr.mosef.scala.template.job.Job
 import fr.mosef.scala.template.processor.Processor
 import fr.mosef.scala.template.processor.impl.ProcessorImpl
@@ -71,8 +71,6 @@ object Main extends App with Job {
     .sparkContext
     .hadoopConfiguration
     .setClass("fs.file.impl",  classOf[BareLocalFileSystem], classOf[FileSystem])
-
-
   val reader: Reader = new ReaderImpl(sparkSession)
   val processor: Processor = new ProcessorImpl()
   val writer: Writer = new Writer()
@@ -80,21 +78,32 @@ object Main extends App with Job {
   val src_path = SRC_PATH
   val src_path_parquet = SRC_PATH_PARQUET
 
+
   val dst_path = DST_PATH
   val dst_path_parquet = DST_PATH_PARQUET
 
+  val inputDF = reader.read(src_path)
+  inputDF.show(50)
 
-
-  val inputDF: DataFrame = reader.read(src_path)
-
-
-  val inputDFparquet : DataFrame = reader.readParquet(src_path_parquet)
+  val inputDFparquet = reader.readParquet(src_path_parquet)
   inputDFparquet.show(50)
 
 
-  val processedDF: DataFrame = processor.process(inputDF)
+  // Afficher le contenu du DataFrame
+
+
+  val processedDF = processor.process(inputDF)
+
+  val tableName = "my_table"
+  val tableLocation = "./src/main/ressources"
+  processedDF.write
+    .mode(SaveMode.Overwrite)
+    .option("path", tableLocation)
+    .saveAsTable(tableName)
+
+  val processedDF_parquet = processor.countRows(inputDFparquet)
+
+
   writer.write(processedDF, "overwrite", dst_path)
-
-  val processedDF_parquet = processor.countRowsInDataFrame(inputDFparquet)
-
+  writer.writeParquet(processedDF_parquet, "overwrite", dst_path_parquet)
 }
