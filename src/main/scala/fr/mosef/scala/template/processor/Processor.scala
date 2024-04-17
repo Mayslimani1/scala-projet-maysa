@@ -6,6 +6,8 @@ trait Processor {
 
   def process(inputDF: DataFrame) : DataFrame
 
-  def countRows(dataFrame: DataFrame): DataFrame
+  def Rename(dataFrame: DataFrame): DataFrame
+
+  def createZeroColumn(dataFrame: DataFrame, columnName: String): DataFrame
 
 }

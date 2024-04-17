@@ -1,9 +1,7 @@
 package fr.mosef.scala.template
-import org.apache.spark.sql.SaveMode
 import fr.mosef.scala.template.job.Job
 import fr.mosef.scala.template.processor.Processor
 import fr.mosef.scala.template.processor.impl.ProcessorImpl
-import fr.mosef.scala.template.reader.Reader
 import fr.mosef.scala.template.reader.Reader
 import fr.mosef.scala.template.reader.impl.ReaderImpl
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -21,23 +19,27 @@ object Main extends App with Job {
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => "local[1]"
   }
+
+  // Lire les Data
   val SRC_PATH: String = try {
     cliArgs(1)
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => {
       "./src/main/resources/commandes.csv"
     }
-  }
 
+  }
   val SRC_PATH_PARQUET: String = try {
     cliArgs(1)
   } catch {
     case e: java.lang.ArrayIndexOutOfBoundsException => {
       "./src/main/resources/commandes.parquet"
     }
+
   }
 
 
+// Path des destinations
   val DST_PATH: String = try {
     cliArgs(2)
   } catch {
@@ -46,7 +48,6 @@ object Main extends App with Job {
     }
   }
 
-
   val DST_PATH_PARQUET: String = try {
     cliArgs(2)
   } catch {
@@ -54,6 +55,16 @@ object Main extends App with Job {
       "./default/output-writer-parquet"
     }
   }
+
+// Chemin du fichier properties
+  val path_properties: String = try {
+    cliArgs(5)
+  } catch {
+    case e: java.lang.ArrayIndexOutOfBoundsException => {
+      "./src/main/resources/application.properties"
+    }
+  }
+
 
 
   val conf = new SparkConf()
@@ -66,44 +77,66 @@ object Main extends App with Job {
     .appName("Scala Template")
     .enableHiveSupport()
     .getOrCreate()
-  
+
   sparkSession
     .sparkContext
     .hadoopConfiguration
     .setClass("fs.file.impl",  classOf[BareLocalFileSystem], classOf[FileSystem])
-  val reader: Reader = new ReaderImpl(sparkSession)
-  val processor: Processor = new ProcessorImpl()
-  val writer: Writer = new Writer()
 
+// Initialisation :
+  val reader: Reader = new ReaderImpl(sparkSession, path_properties)
+  val processor: Processor = new ProcessorImpl()
+  val writer: Writer = new Writer(path_properties)
+
+// Mettre dans une variable
   val src_path = SRC_PATH
   val src_path_parquet = SRC_PATH_PARQUET
 
-
+// Destinations des CSV et Parquet
   val dst_path = DST_PATH
   val dst_path_parquet = DST_PATH_PARQUET
 
+// Fonction Read (appel fonction) :
   val inputDF = reader.read(src_path)
-  inputDF.show(50)
-
   val inputDFparquet = reader.readParquet(src_path_parquet)
-  inputDFparquet.show(50)
 
-
-  // Afficher le contenu du DataFrame
-
-
+// Application du processor (appel fonction)
   val processedDF = processor.process(inputDF)
+  val processedDF_parquet = processor.Rename(inputDFparquet)
 
-  val tableName = "my_table"
-  val tableLocation = "./src/main/resources"
-  processedDF.write
-    .mode(SaveMode.Overwrite)
-    .option("path", tableLocation)
-    .saveAsTable(tableName)
 
-  val processedDF_parquet = processor.countRows(inputDFparquet)
 
+// Spécifier où mettre les tables :
 
   writer.write(processedDF, "overwrite", dst_path)
   writer.writeParquet(processedDF_parquet, "overwrite", dst_path_parquet)
+
+
+// Hive :
+
+  // 1) Mettre sous forme de table :
+  val tableName = "tables"
+  val tableLocation = "./src/main/resources/tables"
+  processedDF.write
+    .mode(SaveMode.Overwrite)
+    .option("path", tableLocation)
+    .saveAsTable(tableName) // mettre sous forme de table Hive
+
+  // Lire la table Hive dans le dossier "tables" :
+  val hiveTableName = "tables"
+  val hiveTableLocation = "./src/main/resources"
+  val hiveTableDF = reader.readTable(hiveTableName, hiveTableLocation)
+
+  // Création colonne 0 :
+  val columnName = "zero(col)"
+  val processedDF_hive = processor.createZeroColumn(hiveTableDF, columnName)
+
+  // Ecriture de la table :
+  val tableNametoload = "table_loaded"
+  val tablePath = "./default/output-writer-hive"
+
+  // Lecture de la table :
+  writer.writeTable(processedDF_hive, tableNametoload, tablePath = tablePath)
+
+
 }
